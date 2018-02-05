@@ -1,5 +1,5 @@
 # imput sample:
-# ./online_learning.py -4997816680341835271,-3316483741552779112
+# run command sample: ./Word2VecInc.py 51 1,2,3 4,5,6
 import sys
 import gensim
 model = gensim.models.Word2Vec.load('/tmp/node_vector_training.model')
