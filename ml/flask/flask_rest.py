@@ -51,18 +51,14 @@ def not_found(error):
 def post_api():
     print request.json
     req = request.json
-    id = req['int_type'] + 1
+    params = req['params']
+    print params[0]['key']
 
-    json = {
-        'int_type': id,
-        'string_type': u'from post',
-        'boolean_type': True
-    }
-
-    return jsonify(json)
+    return jsonify({'a': '2'})
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.debug = True
+    app.run(host='0.0.0.0')
 
 
