@@ -1,53 +1,93 @@
-# pip install flask
-# Ctrl + F5
-import sys
 import gensim
+import base64
+import logging
+import traceback
 from flask import Flask, jsonify, request
 
 app = Flask(__name__)
 
-# sample: python Word2VecInc.py 51 -4997816680341835271,-3316483741552779112,747873468606477381,527339124957220179,1614505455050530776,-5768653493889486991,-384548834315283201,-5395980713609502551,6207235105550302889,4452483878111425273,-2821110282058078629 -4997816680341835271,-3316483741552779112,747873468606477381,527339124957220179,1614505455050530776,-5768653493889486991,-384548834315283201,-5395980713609502551,6207235105550302889,4452483878111425273,-2821110282058078629
-# sys.argv[0] = Word2VecInc.py
-# sys.argv[1] = 51
-# sys.argv[2] = -4997816680341835271,-3316483741552779112,747873468606477381,527339124957220179,1614505455050530776,-5768653493889486991,-384548834315283201,-5395980713609502551,6207235105550302889,4452483878111425273,-2821110282058078629
-# sys.argv[3] = -4997816680341835271,-3316483741552779112,747873468606477381,527339124957220179,1614505455050530776,-5768653493889486991,-384548834315283201,-5395980713609502551,6207235105550302889,4452483878111425273,-2821110282058078629
-model = gensim.models.Word2Vec.load('/home/zengxj/python/node_vector_training_cash.model')
-new_data = []
-node_id = sys.argv[2].strip().split(',')[0]
-if (len(sys.argv) > 3):
-  for i in xrange(2, len(sys.argv)):
-    tokens = sys.argv[i].strip().split(',')
-    for j in xrange(1, len(tokens)):
-      tmp = []
-      tmp.append(tokens[0])
-      tmp.append(tokens[j])
-      new_data.append(tmp)
-  model.build_vocab(new_data, update=True)
-  model.train(new_data, total_examples=model.corpus_count, epochs=model.iter)
 
-sim_vec = model.most_similar(positive=[node_id], topn=int(sys.argv[1]))
-print "result:"
-for i in xrange(0, len(sim_vec)):
-    print sim_vec[i][0],
+# global var
+model = gensim.models.Word2Vec.load('/home/zengxj/python/node_vector_training_cash.model')
+
+
+def sim(node_id, topn, inputs):
+    new_data = []
+    for i in xrange(1, len(inputs)):
+        tokens = inputs[i].strip().split(',')
+        for j in xrange(1, len(tokens)):
+            tmp = []
+            tmp.append(tokens[0])
+            tmp.append(tokens[j])
+            new_data.append(tmp)
+        model.build_vocab(new_data, update=True)
+        model.train(new_data, total_examples=model.corpus_count, epochs=model.iter)
+    
+    sim_vec = model.most_similar(positive=[node_id], topn=int(topn))
+    result_data = []
+    for i in xrange(0, len(sim_vec)):
+        result_data.append(sim_vec[i][0])
+
+    return result_data
 
 
 @app.route('/ml/api/v1.0/sim', methods=['POST'])
-def post_api():
-    print request.json
+def sim_api():
     req = request.json
-    topn = req['int_type'] + 1
+    app.logger.info(req)
 
-    json = {
-        'int_type': id,
-        'string_type': u'from post',
-        'boolean_type': True
-    }
+    # channel info
+    client_id = req['clientId']
+    # service flag, can used to route in future
+    service = req['service']
 
-    return jsonify(json)
+    # parse the params
+    tmp_kv = {}
+    if 'params' in req:
+        params_list = req['params']
+        if len(params_list) > 1:
+            for kv in params_list:
+                key = kv['key']
+                val = kv['value']
+                is_base64 = kv['base64']
+                if is_base64:
+                    tmp_kv[key] = base64.b64decode(val)
+                else:
+                    tmp_kv[key] = val
+                # print ('key:%s value:%s base64:%s' % (key, val, is_base64))
+        else:
+            app.logger.warning('params is empty')
+
+    node_id = tmp_kv['inputs'].split(',')[0]
+    topn = tmp_kv['topn']
+    inputs = tmp_kv['inputs'].split(' ')
+    
+    # print tmp_kv
+    # print node_id
+    # print topn
+    # print inputs
+    try:
+        sim_result = sim(node_id, topn, inputs)
+    except Exception:
+        app.logger.error('trace: %s', traceback.format_exc())
+    else:
+        app.logger.info('sim result: %s', sim_result)
+    
+    print sim_result
+    
+    return jsonify({'result': sim_result})
 
 
 if __name__ == '__main__':
+    handler = logging.FileHandler('sim.log', encoding='UTF-8')
+    handler.setLevel(logging.DEBUG)
+    logging_format = logging.Formatter(
+        '%(asctime)s - %(levelname)s - %(filename)s - %(funcName)s - %(lineno)s - %(message)s')
+
+    handler.setFormatter(logging_format)
+    app.logger.addHandler(handler)
     app.debug = True
+
     app.run(host='0.0.0.0')
 
 
