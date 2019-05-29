@@ -43,8 +43,10 @@ gv_file_path = work_dir + "/GBM_ForLoanPredict.gv"
 image_file_path = work_dir + "/GBM_ForLoanPredict.png"
 win_install_graphviz_path = "C:\\Program Files (x86)\\Graphviz2.38\\bin\\"
 
-# 保存模型
-model.download_mojo(mojo_file_path)
+# 保存MOJO模型
+model.download_mojo(mojo_file_path, get_genmodel_jar=True)
+
+h2o.download_pojo(model, path='/Users/your_user_name/Desktop/', get_jar=True)
 
 
 def generateTree2Gv(h2o_jar_path, mojo_file_path, gv_file_path, tree_id=0):
@@ -58,8 +60,8 @@ def generateTreeImage(gv_file_path, image_file_path):
     result = subprocess.call([win_install_graphviz_path + "dot", "-Tpng", gv_file_path, "-o", image_file_path], shell=True)
 
 
-generateTree2Gv(h2o_jar_path, mojo_file_path, gv_file_path, 0)
-generateTreeImage(gv_file_path, image_file_path)
+# generateTree2Gv(h2o_jar_path, mojo_file_path, gv_file_path, 0)
+# generateTreeImage(gv_file_path, image_file_path)
 
 # 或者cd到目录C:\Program Files (x86)\Graphviz2.38\bin，执行以下命令，生成决策树的图
 # dot -Tpng D:/github/PythonHub/h2o-work/GBM_ForLoanPredict.gv -o D:/github/PythonHub/h2o-work/GBM_ForLoanPredict.png
